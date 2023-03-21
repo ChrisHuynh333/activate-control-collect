@@ -154,6 +154,7 @@ int main()
 
     InitWindow(windowWidth, windowHeight, "Collect");
     initialize_game(colors, game_squares, player);
+    SetTargetFPS(20);
     while(!WindowShouldClose())
     {
         BeginDrawing();
@@ -167,6 +168,28 @@ int main()
             for(int j = 0; j < game_squares[i].size(); j++)
             {
                 DrawRectangle(game_squares[i][j].x, game_squares[i][j].y, game_squares[i][j].width, game_squares[i][j].height, game_squares[i][j].color);
+            }
+        }
+        if(IsKeyDown(KEY_LEFT))
+        {
+            if (player.x == 270)
+            {
+                player.x = 210;
+            }
+            else if (player.x == 330)
+            {
+                player.x = 270;
+            }
+        }
+        if(IsKeyDown(KEY_RIGHT))
+        {
+            if (player.x == 210)
+            {
+                player.x = 270;
+            }
+            else if (player.x == 270)
+            {
+                player.x = 330;
             }
         }
         EndDrawing();
