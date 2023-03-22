@@ -194,6 +194,8 @@ int main()
     auto start_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> time_difference;
     double time_tracker = 0.5;
+    double score_increase_cooldown = 0;
+    double life_loss_cooldown = 0;
     std::string color_tracker = "red";
     int windowHeight = 800;
     int windowWidth = 600;
@@ -222,7 +224,6 @@ int main()
         if (time_difference.count() > time_tracker)
         {
             time_tracker += 0.01;
-            std::cout << time_tracker << "\n";
             move_game_squares(game_squares, colors, player, color_tracker);
             // if (seconds == 0) 
             // {
@@ -241,6 +242,25 @@ int main()
             // {
             //     seconds -= 1;
             // }
+        }
+
+        for (int i = 0; i < game_squares.size(); i++)
+        {
+            for (int j = 0; j < game_squares[i].size(); j++)
+            {
+                if(game_squares[i][j].x == player.x && player.y >= game_squares[i][j].y && player.y <= game_squares[i][j].y + 60)
+                {
+                    if(game_squares[i][j].pos_in_colors == 0 && life_loss_cooldown + 0.35 < time_tracker)
+                    {
+                        std::cout << "red" << "\n";
+                        life_loss_cooldown = time_tracker;
+                    }
+                    else if (game_squares[i][j].pos_in_colors == player.pos_in_colors && score_increase_cooldown + 0.35 < time_tracker)
+                    {
+                        std::cout << "Score!" << "\n";
+                    }
+                }
+            }
         }
 
         if(IsKeyDown(KEY_LEFT))
