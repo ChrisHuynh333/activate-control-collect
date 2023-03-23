@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include <vector>
 #include <chrono>
+#include <thread>
 
 class Player 
 {
@@ -33,6 +34,20 @@ class Game_Square: public Player
         }
         void set_x_coord(int x_input)
         {
+            x = x_input;
+        }
+};
+
+class Lives
+{
+    public:
+        Color color;
+        std::string color_str;
+        int x;
+        void set_color(Color &color_input, std::string &color_str_input, int x_input)
+        {
+            color = color_input;
+            color_str = color_str_input;
             x = x_input;
         }
 };
@@ -114,7 +129,7 @@ void create_starting_game_squares(std::vector<Game_Square> &game_squares, std::s
 
 }
 
-void initialize_game(const std::vector<Color> &available_colors, std::vector<std::vector<Game_Square>> &squares, Player &player)
+void initialize_game(const std::vector<Color> &available_colors, std::vector<std::vector<Game_Square>> &squares, Player &player, std::vector<Lives> &player_lives)
 {
     player.set_coords(270, 680);
     int vector_position = get_random_color_position(available_colors);
@@ -138,6 +153,16 @@ void initialize_game(const std::vector<Color> &available_colors, std::vector<std
             game_square_type = "red";
         }
         create_starting_game_squares(squares[i], game_square_type, i, available_colors, player);
+    }
+    int lives_x_coord = 305;
+    for(int i = 0; i < player_lives.size(); i++)
+    {
+        Lives life;
+        Color color = GREEN;
+        std::string color_str = "green";
+        life.set_color(color, color_str, lives_x_coord);
+        player_lives[i] = life;
+        lives_x_coord += 25;
     }
 }
 
@@ -194,20 +219,41 @@ int main()
     auto start_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> time_difference;
     double time_tracker = 0.5;
+    int seconds_tracker = 1;
+    double score_time_tracker = 0;
     double score_increase_cooldown = 0;
     double life_loss_cooldown = 0;
     std::string color_tracker = "red";
+    int minutes = 2;
+    int seconds = 0;
+    std::vector<Lives> lives(5);
+    int remaining_squares = 50;
+    int score = 1000;
+    bool game_over = false;
     int windowHeight = 800;
     int windowWidth = 600;
 
     InitWindow(windowWidth, windowHeight, "Collect");
-    initialize_game(colors, game_squares, player);
+    initialize_game(colors, game_squares, player, lives);
     SetTargetFPS(240);
-    while(!WindowShouldClose())
+    while(!WindowShouldClose() && !game_over)
     {
         BeginDrawing();
         ClearBackground(WHITE);
+
         DrawRectangle(player.x, player.y, player.width, player.height, player.color);
+        DrawText("Time", 50, 15, 25, BLACK);
+        DrawText(TextFormat("%02d:%02d", minutes, seconds), 40, 40, 35, BLACK);
+        DrawText("Score", 175, 15, 25, BLACK);
+        DrawText(TextFormat("%d", score), 180, 40, 35, BLACK);
+        DrawText("Lives", 325, 15, 25, BLACK);
+        
+        for(int i = 0; i < lives.size(); i++)
+        {
+            DrawCircle(lives[i].x, 55, 10, lives[i].color);
+        }
+        DrawText("Remaining", 450, 15, 25, BLACK);
+        DrawText(TextFormat("%d", remaining_squares), 485, 40, 35, BLACK);
         DrawLine(210, 80, 210, 800, BLACK);
         DrawLine(390, 80, 390, 800, BLACK);
         DrawLine(210, 80, 390, 80, BLACK);
@@ -219,29 +265,65 @@ int main()
             }
         }
 
+        if(lives[0].color_str == "red")
+        {
+            DrawText("Game Over! Out Of Lives", 100, 350, 35, BLACK);
+            game_over = true;
+        }
+        if(seconds == 0 && minutes == 0)
+        {
+            DrawText("Game Over! Out Of Time", 100, 350, 35, BLACK);
+            game_over = true;
+        }
+        if(remaining_squares == 0)
+        {
+            int lives_counter = 0;
+            for(int i = 0; i < 5; i++)
+                {
+                    if(lives[i].color_str == "green")
+                    {
+                        lives_counter ++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                int lives_points = lives_counter * 50;
+                DrawText("Congratulations, you won!", 150, 325, 25, BLACK);
+                DrawText(TextFormat("Your score is %d plus %d more from lives.", score, lives_points), 50, 350, 25, BLACK);
+                game_over = true;
+        }
+
+
         auto end = std::chrono::high_resolution_clock::now();
         time_difference = end - start_time;
         if (time_difference.count() > time_tracker)
         {
             time_tracker += 0.01;
             move_game_squares(game_squares, colors, player, color_tracker);
-            // if (seconds == 0) 
-            // {
-            //     if (minutes > 0)
-            //     {
-            //         seconds = 59;
-            //         minutes -= 1;
-            //     }
-            //     else
-            //     {
-            //         game_over = true;
-            //         DrawText("Game Over! Out Of Time", 320, 310, 50, RED);
-            //     }
-            // }
-            // else
-            // {
-            //     seconds -= 1;
-            // }
+            if (time_tracker > seconds_tracker)
+            {
+                seconds_tracker += 1;
+                if (seconds == 0) 
+                {
+                    if (minutes > 0)
+                    {
+                        seconds = 59;
+                        minutes -= 1;
+                    }
+                }
+                else
+                {
+                    seconds -= 1;
+                }
+            }
+        }
+
+        if (time_difference.count() > score_time_tracker && score > 0)
+        {
+            score_time_tracker += 0.12;
+            score -= 1;
         }
 
         for (int i = 0; i < game_squares.size(); i++)
@@ -252,12 +334,23 @@ int main()
                 {
                     if(game_squares[i][j].pos_in_colors == 0 && life_loss_cooldown + 0.35 < time_tracker)
                     {
-                        std::cout << "red" << "\n";
+                        for (int k = (lives.size() - 1); k > -1; k--)
+                        {
+                            if (lives[k].color_str == "green")
+                            {
+                                std::cout << k << "\n";
+                                Color color = RED;
+                                std::string color_str = "red";
+                                lives[k].set_color(color, color_str, lives[k].x);
+                                break;
+                            }
+                        }
                         life_loss_cooldown = time_tracker;
                     }
                     else if (game_squares[i][j].pos_in_colors == player.pos_in_colors && score_increase_cooldown + 0.35 < time_tracker)
                     {
-                        std::cout << "Score!" << "\n";
+                        remaining_squares -= 1;
+                        score_increase_cooldown = time_tracker;
                     }
                 }
             }
@@ -276,5 +369,15 @@ int main()
             player.x = 270;
         }
         EndDrawing();
+        if(IsKeyPressed(KEY_ESCAPE))
+        {
+            CloseWindow();
+            break;
+        }
+    }
+    if(game_over)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        CloseWindow();
     }
 }
